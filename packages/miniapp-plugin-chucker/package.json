@@ -1,6 +1,6 @@
 {
   "name": "miniapp-plugin-chucker",
-  "version": "2.1.1",
+  "version": "2.1.0",
   "description": "Native Mini Program (WeApp / TCMPP / Alipay / ByteDance) UI assets, inspector page and runtime for Chucker",
   "keywords": [
     "chucker",
