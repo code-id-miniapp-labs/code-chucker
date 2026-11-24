@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import Taro from "@tarojs/taro";
 import { View, Text, ScrollView, Input } from "@tarojs/components";
-import { chuckerStore, ChuckerLog, generateCurl, formatJson } from "miniapp-chucker";
+import { chuckerStore, ChuckerLog, generateCurl, formatJson } from "@code-id-labs/miniapp-chucker";
 import { useVirtualList } from "../hooks/useVirtual";
 // Bundled copy of the exporter: works even if an older miniapp-chucker core is resolved.
 import { buildExportText } from "../export";

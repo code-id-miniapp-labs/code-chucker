@@ -8,12 +8,12 @@ Inspired by Android Chucker and Chrome DevTools, it captures network requests, u
 
 ## 📦 Monorepo Packages
 
-| Package | Version | Description |
-|---|---|---|
-| [`miniapp-chucker`](./packages/chucker) | [![npm](https://img.shields.io/npm/v/miniapp-chucker.svg)](https://www.npmjs.com/package/miniapp-chucker) | Core headless runtime: network interceptors & reactive state store |
-| [`miniapp-plugin-chucker`](./packages/miniapp-plugin-chucker) | [![npm](https://img.shields.io/npm/v/miniapp-plugin-chucker.svg)](https://www.npmjs.com/package/miniapp-plugin-chucker) | Native Mini Program inspector UI, floating button & automated sync CLI |
-| [`tarojs-plugin-chucker`](./packages/tarojs-plugin-chucker) | [![npm](https://img.shields.io/npm/v/tarojs-plugin-chucker.svg)](https://www.npmjs.com/package/tarojs-plugin-chucker) | TaroJS compile-time build plugin for Taro React/Vue miniapps |
-| [`vite-plugin-chucker`](./packages/plugin-vite) | [![npm](https://img.shields.io/npm/v/vite-plugin-chucker.svg)](https://www.npmjs.com/package/vite-plugin-chucker) | Vite / `weapp-vite` build plugin for Mini Program projects |
+| Package                                                                     | Version                                                                                                                                             | Description                                                            |
+| --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| [`@code-id-labs/miniapp-chucker`](./packages/chucker)                       | [![npm](https://img.shields.io/npm/v/@code-id-labs/miniapp-chucker.svg)](https://www.npmjs.com/package/@code-id-labs/miniapp-chucker)               | Core headless runtime: network interceptors & reactive state store     |
+| [`@code-id-labs/miniapp-plugin-chucker`](./packages/miniapp-plugin-chucker) | [![npm](https://img.shields.io/npm/v/@code-id-labs/miniapp-plugin-chucker.svg)](https://www.npmjs.com/package/@code-id-labs/miniapp-plugin-chucker) | Native Mini Program inspector UI, floating button & automated sync CLI |
+| [`@code-id-labs/tarojs-plugin-chucker`](./packages/tarojs-plugin-chucker)   | [![npm](https://img.shields.io/npm/v/@code-id-labs/tarojs-plugin-chucker.svg)](https://www.npmjs.com/package/@code-id-labs/tarojs-plugin-chucker)   | TaroJS compile-time build plugin for Taro React/Vue miniapps           |
+| [`@code-id-labs/code-chucker`](./packages/plugin-vite)                      | [![npm](https://img.shields.io/npm/v/@code-id-labs/code-chucker.svg)](https://www.npmjs.com/package/@code-id-labs/code-chucker)                     | Vite / `weapp-vite` build plugin for Mini Program projects             |
 
 ---
 
@@ -93,6 +93,7 @@ npm run sync
 ```
 
 The CLI automatically:
+
 - Copies inspector UI pages & floating button into `miniprogram_npm/miniapp-plugin-chucker/`.
 - Registers `"miniprogram_npm/miniapp-plugin-chucker/pages/chucker/index"` in `app.json` `pages`.
 - Registers `"chucker-float"` in `app.json` `usingComponents`.
@@ -102,9 +103,11 @@ The CLI automatically:
 #### 4. Production Clean
 
 When preparing a production release:
+
 ```bash
 npm run clean
 ```
+
 This strips Chucker routes, components, WXML tags, and replaces the package with a **0.1 KB no-op stub** for zero bundle overhead.
 
 ---
@@ -115,20 +118,25 @@ The inspector page (UI, ~24 KB native / React page in Taro) is now registered as
 instead of a main-package page. Only the runtime (interceptor + store + exporter) and the tiny
 floating button stay in the main package.
 
-| Layout | Main package (chucker) | Sub-package |
-|---|---|---|
-| Before (main-package page) | ~41 KB | 0 |
-| After (sub-package) | ~17 KB | ~24 KB (`chucker/`) |
+| Layout                     | Main package (chucker) | Sub-package         |
+| -------------------------- | ---------------------- | ------------------- |
+| Before (main-package page) | ~41 KB                 | 0                   |
+| After (sub-package)        | ~17 KB                 | ~24 KB (`chucker/`) |
 
 **Taro**
 
 ```js
-plugins: [["tarojs-plugin-chucker", {
-  enabled: process.env.NODE_ENV === "development",
-  subPackage: true,            // default → route "/chucker/index"
-  // subPackage: "debug/chucker" → custom root
-  // subPackage: false           → legacy "pages/chucker/index"
-}]]
+plugins: [
+  [
+    "tarojs-plugin-chucker",
+    {
+      enabled: process.env.NODE_ENV === "development",
+      subPackage: true, // default → route "/chucker/index"
+      // subPackage: "debug/chucker" → custom root
+      // subPackage: false           → legacy "pages/chucker/index"
+    },
+  ],
+];
 ```
 
 **Native** (`npx miniapp-plugin-chucker`)
@@ -189,14 +197,14 @@ chuckerStore.completeTracking(trackingId, {
 
 ### `chuckerStore` API Reference
 
-| Method | Returns | Description |
-|---|---|---|
-| `chuckerStore.log(input)` | `string` (id) | Add a completed log entry |
-| `chuckerStore.startTracking(input)` | `string` (id) | Start tracking an async event |
-| `chuckerStore.completeTracking(id, result?)` | `void` | Finalize a tracked event |
-| `chuckerStore.getLogs()` | `ChuckerLog[]` | Retrieve all current logs |
-| `chuckerStore.clear()` | `void` | Clear all logs |
-| `chuckerStore.subscribe(listener)` | `() => void` | Subscribe to log updates, returns unsubscribe callback |
+| Method                                       | Returns        | Description                                            |
+| -------------------------------------------- | -------------- | ------------------------------------------------------ |
+| `chuckerStore.log(input)`                    | `string` (id)  | Add a completed log entry                              |
+| `chuckerStore.startTracking(input)`          | `string` (id)  | Start tracking an async event                          |
+| `chuckerStore.completeTracking(id, result?)` | `void`         | Finalize a tracked event                               |
+| `chuckerStore.getLogs()`                     | `ChuckerLog[]` | Retrieve all current logs                              |
+| `chuckerStore.clear()`                       | `void`         | Clear all logs                                         |
+| `chuckerStore.subscribe(listener)`           | `() => void`   | Subscribe to log updates, returns unsubscribe callback |
 
 ---
 
@@ -205,10 +213,10 @@ chuckerStore.completeTracking(trackingId, {
 ```
 tarojs-plugin-chucker/
 ├── packages/
-│   ├── chucker/                  # miniapp-chucker (core runtime & store)
-│   ├── miniapp-plugin-chucker/   # miniapp-plugin-chucker (native inspector UI & CLI)
-│   ├── plugin-vite/              # vite-plugin-chucker (Vite / weapp-vite build plugin)
-│   └── tarojs-plugin-chucker/    # tarojs-plugin-chucker (Taro build plugin)
+│   ├── chucker/                  # @code-id-labs/miniapp-chucker (core runtime & store)
+│   ├── miniapp-plugin-chucker/   # @code-id-labs/miniapp-plugin-chucker (native inspector UI & CLI)
+│   ├── plugin-vite/              # @code-id-labs/code-chucker (Vite / weapp-vite build plugin)
+│   └── tarojs-plugin-chucker/    # @code-id-labs/tarojs-plugin-chucker (Taro build plugin)
 └── example/
     ├── native-plugin-chucker/    # Pure Native WeApp / TCMPP example
     └── taro-app/                 # Taro React example application

@@ -85,7 +85,7 @@ test("default sub-package mode registers subPackage, emits assets, and injects i
   const appId = path.resolve(projectRoot, "src", "app.ts");
   const transformed = plugin.transform("App({});", appId);
   assert.ok(transformed);
-  assert.match(transformed.code, /import \{ initChucker \} from "miniapp-chucker";/);
+  assert.match(transformed.code, /import \{ initChucker \} from "@code-id-labs\/miniapp-chucker";/);
   assert.match(transformed.code, /"navigatePath":"\/chucker\/index"/);
 
   // Transform skips non-entry files and avoids double injection

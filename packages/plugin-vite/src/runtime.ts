@@ -4,7 +4,7 @@ export {
   generateCurl,
   formatJson,
   buildExportText,
-} from "miniapp-chucker";
+} from "@code-id-labs/miniapp-chucker";
 
 export type {
   ChuckerOptions,
@@ -13,4 +13,4 @@ export type {
   TrackingCompleteInput,
   Listener,
   ExportOptions,
-} from "miniapp-chucker";
+} from "@code-id-labs/miniapp-chucker";

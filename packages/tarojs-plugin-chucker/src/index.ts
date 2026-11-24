@@ -123,11 +123,11 @@ export default (ctx: IPluginContext, options: ChuckerPluginOptions = {}) => {
         .set(userPagePathUnix + ".js", templatePath)
         .set(userPagePathUnix + ".jsx", templatePath);
 
-      // Alias miniapp-chucker to plugin's own dependency so host app does not need to install it
+      // Alias @code-id-labs/miniapp-chucker to plugin's own dependency so host app does not need to install it
       try {
-        const miniappChuckerPath = require.resolve("miniapp-chucker");
-        chain.resolve.alias.set("miniapp-chucker$", miniappChuckerPath);
-        chain.resolve.alias.set("miniapp-chucker", miniappChuckerPath);
+        const miniappChuckerPath = require.resolve("@code-id-labs/miniapp-chucker");
+        chain.resolve.alias.set("@code-id-labs/miniapp-chucker$", miniappChuckerPath);
+        chain.resolve.alias.set("@code-id-labs/miniapp-chucker", miniappChuckerPath);
       } catch (_e) {}
 
       // Force resolve from host project's node_modules to prevent duplicates

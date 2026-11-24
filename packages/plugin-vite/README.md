@@ -1,20 +1,20 @@
-# vite-plugin-chucker
+# @code-id-labs/code-chucker
 
-Vite / `weapp-vite` build plugin for [`miniapp-chucker`](../chucker) — automatically injects the Chucker network & native API inspector into `weapp-vite` Mini Program projects.
+Vite / `weapp-vite` build plugin for [`@code-id-labs/miniapp-chucker`](../chucker) — automatically injects the Chucker network & native API inspector into `weapp-vite` Mini Program projects.
 
 ## Installation
 
 ```bash
-pnpm add vite-plugin-chucker -D
+pnpm add @code-id-labs/code-chucker -D
 # or
-npm install vite-plugin-chucker --save-dev
+npm install @code-id-labs/code-chucker --save-dev
 ```
 
 ## Usage (`vite.config.ts`)
 
 ```ts
 import { defineConfig } from "weapp-vite/config";
-import chuckerPlugin from "vite-plugin-chucker";
+import chuckerPlugin from "@code-id-labs/code-chucker";
 
 export default defineConfig({
   weapp: {
@@ -49,7 +49,7 @@ When disabled (e.g. production builds), the plugin is a complete no-op with zero
 ## Custom Event Logging
 
 ```ts
-import { chuckerStore } from "vite-plugin-chucker/runtime";
+import { chuckerStore } from "@code-id-labs/code-chucker/runtime";
 
 chuckerStore.log({
   type: "websocket",

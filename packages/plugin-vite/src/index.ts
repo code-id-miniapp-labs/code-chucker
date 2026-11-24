@@ -226,13 +226,13 @@ export function chuckerPlugin(options: ChuckerVitePluginOptions = {}): VitePlugi
 
       const alias: Array<{ find: RegExp; replacement: string }> = [];
       try {
-        const miniappChuckerPath = require.resolve("miniapp-chucker");
+        const miniappChuckerPath = require.resolve("@code-id-labs/miniapp-chucker");
         alias.push({
-          find: /^miniapp-chucker$/,
+          find: /^@code-id-labs\/miniapp-chucker$/,
           replacement: miniappChuckerPath,
         });
       } catch (_e) {
-        // Host project may resolve miniapp-chucker directly
+        // Host project may resolve @code-id-labs/miniapp-chucker directly
       }
 
       return {
@@ -266,7 +266,7 @@ export function chuckerPlugin(options: ChuckerVitePluginOptions = {}): VitePlugi
       if (options.console !== undefined) initOpts.console = options.console;
 
       const injection =
-        `import { initChucker } from "miniapp-chucker";\n` +
+        `import { initChucker } from "@code-id-labs/miniapp-chucker";\n` +
         `try {\n` +
         `  initChucker(${JSON.stringify(initOpts)});\n` +
         `} catch (e) {\n` +

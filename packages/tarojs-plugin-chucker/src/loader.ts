@@ -4,7 +4,7 @@
  */
 function chuckerAppLoader(this: any, source: string): string {
   const injection = `
-import { initChucker } from 'miniapp-chucker';
+import { initChucker } from '@code-id-labs/miniapp-chucker';
 try {
   initChucker({ navigatePath: process.env.CHUCKER_ROUTE });
 } catch (e) {

@@ -19,7 +19,7 @@ export default defineConfig<'webpack5'>(async (merge, { command, mode }) => {
     outputRoot: 'dist',
     plugins: [
       "@tarojs/plugin-generator",
-      ['tarojs-plugin-chucker', { enabled: true }]
+      ['@code-id-labs/tarojs-plugin-chucker', { enabled: true }]
     ],
     defineConstants: {
     },
