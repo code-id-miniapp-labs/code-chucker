@@ -1,6 +1,6 @@
 {
   "name": "@code-id-labs/code-chucker",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "description": "Vite / weapp-vite build plugin for miniapp-chucker — injects the Chucker network & native inspector into weapp-vite Mini Program projects",
   "keywords": [
     "chucker",
@@ -48,7 +48,7 @@
     "prepare": "pnpm run build"
   },
   "dependencies": {
-    "miniapp-chucker": "workspace:*"
+    "@code-id-labs/miniapp-chucker": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",

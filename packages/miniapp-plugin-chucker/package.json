@@ -1,6 +1,6 @@
 {
-  "name": "miniapp-plugin-chucker",
-  "version": "2.2.1",
+  "name": "@code-id-labs/miniapp-plugin-chucker",
+  "version": "2.2.2",
   "description": "Native Mini Program (WeApp / TCMPP / Alipay / ByteDance) UI assets, inspector page and runtime for Chucker",
   "keywords": [
     "chucker",
@@ -41,7 +41,7 @@
     "prepare": "pnpm run build"
   },
   "dependencies": {
-    "miniapp-chucker": "workspace:*"
+    "@code-id-labs/miniapp-chucker": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^18.0.0",
