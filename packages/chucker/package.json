@@ -1,6 +1,6 @@
 {
   "name": "miniapp-chucker",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Headless framework-agnostic network debugger core for WeApp / TCMPP / Alipay / TaroJS miniapps",
   "keywords": [
     "chucker",
