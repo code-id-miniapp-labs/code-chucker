@@ -1,17 +1,198 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Taro from "@tarojs/taro";
 import { View, Text, ScrollView, Input } from "@tarojs/components";
 import { chuckerStore, ChuckerLog, generateCurl, formatJson } from "@code-id-labs/miniapp-chucker";
-import { useVirtualList } from "../hooks/useVirtual";
 // Bundled copy of the exporter: works even if an older miniapp-chucker core is resolved.
 import { buildExportText } from "../export";
 import { CloseIcon } from "./icons";
+
+const PAGE_SIZE = 40;
+
+const getStatusInfo = (status: string | number | undefined) => {
+  if (status === undefined || status === "pending") {
+    return { label: "…", color: "#f59e0b" };
+  }
+  if (status === "fail" || status === "error" || (typeof status === "number" && status >= 400)) {
+    return { label: String(status), color: "#ef4444" };
+  }
+  return { label: String(status), color: "#10b981" };
+};
+
+const METHOD_TAG_BASE_STYLE = {
+  fontSize: "9.5px",
+  fontWeight: "bold" as const,
+  fontFamily: '"SF Mono", Menlo, monospace',
+  padding: "1.5px 4px",
+  borderRadius: "3px",
+  letterSpacing: "0.3px",
+  textAlign: "center" as const,
+  display: "inline-block" as const,
+};
+
+const METHOD_TAG_STYLES: Record<string, React.CSSProperties> = {
+  GET: { ...METHOD_TAG_BASE_STYLE, color: "#3b82f6", backgroundColor: "rgba(59, 130, 246, 0.12)" },
+  POST: { ...METHOD_TAG_BASE_STYLE, color: "#10b981", backgroundColor: "rgba(16, 185, 129, 0.12)" },
+  PUT: { ...METHOD_TAG_BASE_STYLE, color: "#f59e0b", backgroundColor: "rgba(245, 158, 11, 0.12)" },
+  DELETE: { ...METHOD_TAG_BASE_STYLE, color: "#ef4444", backgroundColor: "rgba(239, 68, 68, 0.12)" },
+  NATIVE: { ...METHOD_TAG_BASE_STYLE, color: "#06b6d4", backgroundColor: "rgba(6, 182, 212, 0.12)" },
+  UPLOAD: { ...METHOD_TAG_BASE_STYLE, color: "#8b5cf6", backgroundColor: "rgba(139, 92, 246, 0.12)" },
+  DOWNLOAD: { ...METHOD_TAG_BASE_STYLE, color: "#8b5cf6", backgroundColor: "rgba(139, 92, 246, 0.12)" },
+  DEFAULT: { ...METHOD_TAG_BASE_STYLE, color: "#a1a1aa", backgroundColor: "#27272a" },
+};
+
+const getMethodTagStyle = (method: string) => {
+  const m = (method || "").toUpperCase();
+  return METHOD_TAG_STYLES[m] || METHOD_TAG_STYLES.DEFAULT;
+};
+
+const getMethodColor = (method: string) => {
+  switch ((method || "").toUpperCase()) {
+    case "GET":
+      return "#3b82f6";
+    case "POST":
+      return "#10b981";
+    case "PUT":
+      return "#f59e0b";
+    case "DELETE":
+      return "#ef4444";
+    case "NATIVE":
+      return "#06b6d4";
+    case "UPLOAD":
+    case "DOWNLOAD":
+      return "#8b5cf6";
+    default:
+      return "#f4f4f5";
+  }
+};
+
+const formatTime = (timestamp: number) => {
+  const date = new Date(timestamp);
+  const h = String(date.getHours()).padStart(2, "0");
+  const m = String(date.getMinutes()).padStart(2, "0");
+  const s = String(date.getSeconds()).padStart(2, "0");
+  return `${h}:${m}:${s}`;
+};
+
+const isNetworkLog = (log: ChuckerLog) => {
+  if (!log) return false;
+  if (log.type === "native") return false;
+  return (
+    log.type === "network" ||
+    log.type === "http" ||
+    log.type === "upload" ||
+    log.type === "download" ||
+    !log.type
+  );
+};
+
+const ROW_BASE_STYLE: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  padding: "10px 12px",
+  borderBottom: "1px solid #202024",
+  backgroundColor: "#121214",
+  gap: "8px",
+};
+
+const ROW_BORDER_STYLES: Record<string, React.CSSProperties> = {
+  "#ef4444": { ...ROW_BASE_STYLE, borderLeft: "3px solid #ef4444" },
+  "#f59e0b": { ...ROW_BASE_STYLE, borderLeft: "3px solid #f59e0b" },
+  default: { ...ROW_BASE_STYLE, borderLeft: "3px solid transparent" },
+};
+
+const BADGE_COL_STYLE: React.CSSProperties = {
+  flexShrink: 0,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  width: "50px",
+  gap: "2px",
+};
+
+const URL_COL_STYLE: React.CSSProperties = {
+  flex: 1,
+  overflow: "hidden",
+};
+
+const URL_TEXT_STYLE: React.CSSProperties = {
+  fontSize: "12.5px",
+  color: "#f4f4f5",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  display: "block",
+};
+
+const META_ROW_STYLE: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  gap: "3px",
+  marginTop: "2px",
+};
+
+const META_TEXT_STYLE: React.CSSProperties = {
+  fontSize: "10px",
+  color: "#71717a",
+};
+
+const CHEVRON_STYLE: React.CSSProperties = {
+  fontSize: "16px",
+  color: "#71717a",
+  flexShrink: 0,
+};
+
+const LogRow = React.memo(
+  ({ log, onSelect }: { log: ChuckerLog; onSelect: (id: string) => void }) => {
+    const statusInfo = getStatusInfo(log.status);
+    const rowStyle = ROW_BORDER_STYLES[statusInfo.color] || ROW_BORDER_STYLES.default;
+    const urlText = typeof log.url === "object" ? JSON.stringify(log.url) : log.url;
+
+    return (
+      <View onClick={() => onSelect(log.id)} style={rowStyle}>
+        {/* Badges column */}
+        <View style={BADGE_COL_STYLE}>
+          <Text style={getMethodTagStyle(log.method)}>{log.method}</Text>
+          <Text
+            style={{
+              fontSize: "10px",
+              fontWeight: "bold",
+              fontFamily: '"SF Mono", Menlo, monospace',
+              color: statusInfo.color,
+            }}
+          >
+            {statusInfo.label}
+          </Text>
+        </View>
+
+        {/* URL & Meta */}
+        <View style={URL_COL_STYLE}>
+          <Text style={URL_TEXT_STYLE}>{urlText}</Text>
+          <View style={META_ROW_STYLE}>
+            <Text style={META_TEXT_STYLE}>{formatTime(log.startTime)}</Text>
+            {log.duration !== undefined && (
+              <>
+                <Text style={META_TEXT_STYLE}>·</Text>
+                <Text style={META_TEXT_STYLE}>{log.duration}ms</Text>
+              </>
+            )}
+          </View>
+        </View>
+
+        {/* Chevron */}
+        <Text style={CHEVRON_STYLE}>›</Text>
+      </View>
+    );
+  },
+);
 
 export const Chucker: React.FC = () => {
   const [isOpen, setIsOpen] = useState(true);
   const [logs, setLogs] = useState<ChuckerLog[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "network" | "native">("all");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
   const [activeDetailTab, setActiveDetailTab] = useState<"overview" | "request" | "response">(
     "overview",
@@ -25,28 +206,21 @@ export const Chucker: React.FC = () => {
     return unsubscribe;
   }, []);
 
-  const isNetworkLog = (log: ChuckerLog) => {
-    if (!log) return false;
-    if (log.type === "native") return false;
-    return (
-      log.type === "network" ||
-      log.type === "http" ||
-      log.type === "upload" ||
-      log.type === "download" ||
-      !log.type
-    );
-  };
+  // Reset rendered window when filters change
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [searchQuery, filterType]);
 
   // Filter logs based on search query and tab selection
   const filteredLogs = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
     return logs.filter((log) => {
       // 1. Filter by type
       if (filterType === "network" && !isNetworkLog(log)) return false;
       if (filterType === "native" && log.type !== "native") return false;
 
       // 2. Filter by search query (URL or native plugin name)
-      if (!searchQuery) return true;
-      const query = searchQuery.toLowerCase();
+      if (!query) return true;
       return (
         (log.url && String(log.url).toLowerCase().includes(query)) ||
         (log.requestHeaders && JSON.stringify(log.requestHeaders).toLowerCase().includes(query)) ||
@@ -55,17 +229,49 @@ export const Chucker: React.FC = () => {
     });
   }, [logs, searchQuery, filterType]);
 
-  // Virtualize the logs list to support huge list data
-  const { vlChunks, vlStyles } = useVirtualList({
-    items: filteredLogs,
-    itemHeight: 52,
-    chunkSize: 10,
-    disabled: !isOpen,
-  });
+  const visibleLogs = useMemo(
+    () => filteredLogs.slice(0, visibleCount),
+    [filteredLogs, visibleCount],
+  );
+
+  const handleLoadMore = useCallback(() => {
+    setVisibleCount((prev) => (prev < filteredLogs.length ? prev + PAGE_SIZE : prev));
+  }, [filteredLogs.length]);
+
+  const handleSelectLog = useCallback((id: string) => {
+    setSelectedLogId(id);
+    setActiveDetailTab("overview");
+  }, []);
 
   const selectedLog = useMemo(() => {
     return logs.find((l) => l.id === selectedLogId) || null;
   }, [logs, selectedLogId]);
+
+  const formattedDetail = useMemo(() => {
+    if (!selectedLog) return null;
+    return {
+      requestHeaders:
+        activeDetailTab === "request" &&
+        selectedLog.requestHeaders &&
+        Object.keys(selectedLog.requestHeaders).length > 0
+          ? formatJson(selectedLog.requestHeaders)
+          : "",
+      requestData:
+        activeDetailTab === "request" && selectedLog.requestData
+          ? formatJson(selectedLog.requestData)
+          : "",
+      responseHeaders:
+        activeDetailTab === "response" &&
+        selectedLog.responseHeaders &&
+        Object.keys(selectedLog.responseHeaders).length > 0
+          ? formatJson(selectedLog.responseHeaders)
+          : "",
+      responseData:
+        activeDetailTab === "response" && selectedLog.responseData
+          ? formatJson(selectedLog.responseData)
+          : "",
+    };
+  }, [selectedLog, activeDetailTab]);
 
   // Statistics
   const errorCount = useMemo(() => {
@@ -159,84 +365,6 @@ export const Chucker: React.FC = () => {
     });
   };
 
-  const getStatusInfo = (status: string | number | undefined) => {
-    if (status === undefined || status === "pending") {
-      return { label: "…", color: "#f59e0b" };
-    }
-    if (status === "fail" || status === "error" || (typeof status === "number" && status >= 400)) {
-      return { label: String(status), color: "#ef4444" };
-    }
-    return { label: String(status), color: "#10b981" };
-  };
-
-  const getMethodTagStyle = (method: string) => {
-    const m = (method || "").toUpperCase();
-    let color = "#a1a1aa";
-    let bg = "#27272a";
-
-    switch (m) {
-      case "GET":
-        color = "#3b82f6";
-        bg = "rgba(59, 130, 246, 0.12)";
-        break;
-      case "POST":
-        color = "#10b981";
-        bg = "rgba(16, 185, 129, 0.12)";
-        break;
-      case "PUT":
-        color = "#f59e0b";
-        bg = "rgba(245, 158, 11, 0.12)";
-        break;
-      case "DELETE":
-        color = "#ef4444";
-        bg = "rgba(239, 68, 68, 0.12)";
-        break;
-      case "NATIVE":
-        color = "#06b6d4";
-        bg = "rgba(6, 182, 212, 0.12)";
-        break;
-      case "UPLOAD":
-      case "DOWNLOAD":
-        color = "#8b5cf6";
-        bg = "rgba(139, 92, 246, 0.12)";
-        break;
-    }
-
-    return {
-      fontSize: "9.5px",
-      fontWeight: "bold" as const,
-      fontFamily: '"SF Mono", Menlo, monospace',
-      padding: "1.5px 4px",
-      borderRadius: "3px",
-      letterSpacing: "0.3px",
-      color,
-      backgroundColor: bg,
-      textAlign: "center" as const,
-      display: "inline-block" as const,
-    };
-  };
-
-  const getMethodColor = (method: string) => {
-    switch ((method || "").toUpperCase()) {
-      case "GET": return "#3b82f6";
-      case "POST": return "#10b981";
-      case "PUT": return "#f59e0b";
-      case "DELETE": return "#ef4444";
-      case "NATIVE": return "#06b6d4";
-      case "UPLOAD":
-      case "DOWNLOAD": return "#8b5cf6";
-      default: return "#f4f4f5";
-    }
-  };
-
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const h = String(date.getHours()).padStart(2, "0");
-    const m = String(date.getMinutes()).padStart(2, "0");
-    const s = String(date.getSeconds()).padStart(2, "0");
-    return `${h}:${m}:${s}`;
-  };
-
   // ─── Floating button when closed ───
   if (!isOpen) {
     return (
@@ -301,19 +429,15 @@ export const Chucker: React.FC = () => {
         overflow: "hidden",
       }}
     >
-      {/* ══════════════════ DETAIL VIEW OVERLAY ══════════════════ */}
-      {selectedLog && (
+      {/* ══════════════════ DETAIL VIEW ══════════════════ */}
+      {selectedLog ? (
         <View
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+            flex: 1,
             backgroundColor: "#121214",
-            zIndex: 100001,
             display: "flex",
             flexDirection: "column",
+            overflow: "hidden",
           }}
         >
           {/* Detail Bar */}
@@ -538,7 +662,7 @@ export const Chucker: React.FC = () => {
               {/* ── 2. Request Tab ── */}
               {activeDetailTab === "request" && (
                 <>
-                  {selectedLog.requestHeaders && Object.keys(selectedLog.requestHeaders).length > 0 && (
+                  {formattedDetail?.requestHeaders && (
                     <View
                       style={{
                         backgroundColor: "#1c1c20",
@@ -562,7 +686,7 @@ export const Chucker: React.FC = () => {
                           Headers
                         </Text>
                         <View
-                          onClick={() => handleCopyText(formatJson(selectedLog.requestHeaders))}
+                          onClick={() => handleCopyText(formattedDetail.requestHeaders)}
                           style={{
                             padding: "3px 8px",
                             borderRadius: "4px",
@@ -584,7 +708,7 @@ export const Chucker: React.FC = () => {
                             color: "#93c5fd",
                           }}
                         >
-                          {formatJson(selectedLog.requestHeaders)}
+                          {formattedDetail.requestHeaders}
                         </Text>
                       </View>
                     </View>
@@ -612,9 +736,9 @@ export const Chucker: React.FC = () => {
                       <Text style={{ fontSize: "11px", fontWeight: 600, color: "#a1a1aa", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                         Payload Body
                       </Text>
-                      {selectedLog.requestData && (
+                      {formattedDetail?.requestData && (
                         <View
-                          onClick={() => handleCopyText(formatJson(selectedLog.requestData))}
+                          onClick={() => handleCopyText(formattedDetail.requestData)}
                           style={{
                             padding: "3px 8px",
                             borderRadius: "4px",
@@ -627,7 +751,7 @@ export const Chucker: React.FC = () => {
                       )}
                     </View>
                     <View style={{ padding: "12px", backgroundColor: "#101012" }}>
-                      {selectedLog.requestData ? (
+                      {formattedDetail?.requestData ? (
                         <Text
                           style={{
                             fontSize: "11px",
@@ -638,7 +762,7 @@ export const Chucker: React.FC = () => {
                             color: "#86efac",
                           }}
                         >
-                          {formatJson(selectedLog.requestData)}
+                          {formattedDetail.requestData}
                         </Text>
                       ) : (
                         <Text style={{ fontSize: "12px", color: "#71717a", fontStyle: "italic" }}>
@@ -682,7 +806,7 @@ export const Chucker: React.FC = () => {
                     </View>
                   )}
 
-                  {selectedLog.responseHeaders && Object.keys(selectedLog.responseHeaders).length > 0 && (
+                  {formattedDetail?.responseHeaders && (
                     <View
                       style={{
                         backgroundColor: "#1c1c20",
@@ -706,7 +830,7 @@ export const Chucker: React.FC = () => {
                           Headers
                         </Text>
                         <View
-                          onClick={() => handleCopyText(formatJson(selectedLog.responseHeaders))}
+                          onClick={() => handleCopyText(formattedDetail.responseHeaders)}
                           style={{
                             padding: "3px 8px",
                             borderRadius: "4px",
@@ -728,7 +852,7 @@ export const Chucker: React.FC = () => {
                             color: "#93c5fd",
                           }}
                         >
-                          {formatJson(selectedLog.responseHeaders)}
+                          {formattedDetail.responseHeaders}
                         </Text>
                       </View>
                     </View>
@@ -756,9 +880,9 @@ export const Chucker: React.FC = () => {
                       <Text style={{ fontSize: "11px", fontWeight: 600, color: "#a1a1aa", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                         Response Body
                       </Text>
-                      {selectedLog.responseData && (
+                      {formattedDetail?.responseData && (
                         <View
-                          onClick={() => handleCopyText(formatJson(selectedLog.responseData))}
+                          onClick={() => handleCopyText(formattedDetail.responseData)}
                           style={{
                             padding: "3px 8px",
                             borderRadius: "4px",
@@ -771,7 +895,7 @@ export const Chucker: React.FC = () => {
                       )}
                     </View>
                     <View style={{ padding: "12px", backgroundColor: "#101012" }}>
-                      {selectedLog.responseData ? (
+                      {formattedDetail?.responseData ? (
                         <Text
                           style={{
                             fontSize: "11px",
@@ -782,7 +906,7 @@ export const Chucker: React.FC = () => {
                             color: "#86efac",
                           }}
                         >
-                          {formatJson(selectedLog.responseData)}
+                          {formattedDetail.responseData}
                         </Text>
                       ) : (
                         <Text style={{ fontSize: "12px", color: "#71717a", fontStyle: "italic" }}>
@@ -797,7 +921,8 @@ export const Chucker: React.FC = () => {
             </View>
           </ScrollView>
         </View>
-      )}
+      ) : (
+        <>
 
       {/* ══════════════════ MAIN LOGS LIST VIEW ══════════════════ */}
       {/* List Header */}
@@ -956,98 +1081,37 @@ export const Chucker: React.FC = () => {
       </View>
 
       {/* Logs List Container */}
-      <View style={{ flex: 1, overflowY: "auto" }}>
+      <ScrollView
+        scrollY
+        lowerThreshold={120}
+        onScrollToLower={handleLoadMore}
+        style={{ flex: 1, minHeight: 0 }}
+      >
         {filteredLogs.length === 0 ? (
           <View style={{ padding: "70px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
             <Text style={{ fontSize: "15px", fontWeight: 600, color: "#a1a1aa" }}>No transactions</Text>
             <Text style={{ fontSize: "12px", color: "#71717a" }}>Network requests and native calls appear here</Text>
           </View>
         ) : (
-          vlChunks.map((chunk, ci) => (
-            <View key={ci} id={`vl-chunk-${ci}`} className="vl-chunk" style={vlStyles[ci]}>
-              {chunk.map((log) => {
-                const statusInfo = getStatusInfo(log.status);
-                return (
-                  <View
-                    key={log.id}
-                    onClick={() => {
-                      setSelectedLogId(log.id);
-                      setActiveDetailTab("overview");
-                    }}
-                    style={{
-                      display: "flex",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      padding: "10px 12px",
-                      borderBottom: "1px solid #202024",
-                      backgroundColor: "#121214",
-                      borderLeft:
-                        statusInfo.color === "#ef4444"
-                          ? "3px solid #ef4444"
-                          : statusInfo.color === "#f59e0b"
-                            ? "3px solid #f59e0b"
-                            : "3px solid transparent",
-                      gap: "8px",
-                    }}
-                  >
-                    {/* Badges column */}
-                    <View
-                      style={{
-                        flexShrink: 0,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "flex-start",
-                        width: "50px",
-                        gap: "2px",
-                      }}
-                    >
-                      <Text style={getMethodTagStyle(log.method)}>{log.method}</Text>
-                      <Text
-                        style={{
-                          fontSize: "10px",
-                          fontWeight: "bold",
-                          fontFamily: '"SF Mono", Menlo, monospace',
-                          color: statusInfo.color,
-                        }}
-                      >
-                        {statusInfo.label}
-                      </Text>
-                    </View>
-
-                    {/* URL & Meta */}
-                    <View style={{ flex: 1, overflow: "hidden" }}>
-                      <Text
-                        style={{
-                          fontSize: "12.5px",
-                          color: "#f4f4f5",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          display: "block",
-                        }}
-                      >
-                        {typeof log.url === "object" ? JSON.stringify(log.url) : log.url}
-                      </Text>
-                      <View style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "3px", marginTop: "2px" }}>
-                        <Text style={{ fontSize: "10px", color: "#71717a" }}>{formatTime(log.startTime)}</Text>
-                        {log.duration !== undefined && (
-                          <>
-                            <Text style={{ fontSize: "10px", color: "#71717a" }}>·</Text>
-                            <Text style={{ fontSize: "10px", color: "#71717a" }}>{log.duration}ms</Text>
-                          </>
-                        )}
-                      </View>
-                    </View>
-
-                    {/* Chevron */}
-                    <Text style={{ fontSize: "16px", color: "#71717a", flexShrink: 0 }}>›</Text>
-                  </View>
-                );
-              })}
-            </View>
-          ))
+          <>
+            {visibleLogs.map((log) => (
+              <LogRow key={log.id} log={log} onSelect={handleSelectLog} />
+            ))}
+            {visibleLogs.length < filteredLogs.length && (
+              <View
+                onClick={handleLoadMore}
+                style={{ padding: "12px", textAlign: "center" }}
+              >
+                <Text style={{ fontSize: "11px", color: "#71717a" }}>
+                  Showing {visibleLogs.length} of {filteredLogs.length} — scroll or tap for more
+                </Text>
+              </View>
+            )}
+          </>
         )}
-      </View>
+      </ScrollView>
+        </>
+      )}
     </View>
   );
 };

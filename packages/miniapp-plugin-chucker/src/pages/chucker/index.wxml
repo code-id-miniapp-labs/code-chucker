@@ -8,7 +8,7 @@
       <view class="header-left">
         <text class="header-title">Chucker</text>
         <view class="header-stats">
-          <text class="stat-badge">{{logs.length}}</text>
+          <text class="stat-badge">{{totalCount}}</text>
           <text wx:if="{{errorCount > 0}}" class="stat-badge stat-badge--error">{{errorCount}} err</text>
         </view>
       </view>
@@ -60,7 +60,7 @@
     </view>
 
     <!-- Request List -->
-    <scroll-view scroll-y class="log-scroll">
+    <scroll-view scroll-y lower-threshold="120" bindscrolltolower="onLoadMore" class="log-scroll">
       <!-- Empty state -->
       <view wx:if="{{filteredLogs.length === 0}}" class="empty-state">
         <text class="empty-title">No transactions</text>

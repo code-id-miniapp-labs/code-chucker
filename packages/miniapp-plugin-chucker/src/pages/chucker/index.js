@@ -85,13 +85,32 @@ function isNetworkLog(log) {
   );
 }
 
+var PAGE_SIZE = 40;
+
 /**
- * Enrich a raw ChuckerLog for display in WXML.
- * Adds computed text fields so templates stay simple.
+ * Lightweight list-row projection sent via setData for the list view.
+ * Keeps headers and request/response bodies out of setData to avoid bridge bloat.
+ */
+function toListItem(log) {
+  return {
+    id: log.id,
+    method: log.method,
+    methodClass: methodClass(log.method),
+    status: log.status,
+    statusClass: getStatusClass(log.status),
+    url: typeof log.url === "object" ? JSON.stringify(log.url) : log.url,
+    timeLabel: formatTime(log.startTime),
+    duration: log.duration,
+  };
+}
+
+/**
+ * Enrich a single ChuckerLog lazily when the user opens the detail view.
  */
 function enrichLog(log) {
   return Object.assign({}, log, {
     isNetwork: isNetworkLog(log),
+    url: typeof log.url === "object" ? JSON.stringify(log.url) : log.url,
     timeLabel: formatTime(log.startTime),
     startTimeLabel: new Date(log.startTime).toLocaleString(),
     statusClass: getStatusClass(log.status),
@@ -123,10 +142,11 @@ function getStore() {
 
 Page({
   data: {
-    // All logs from the store
-    logs: [],
-    // Logs after filter/search applied
+    // Total number of logs in the store
+    totalCount: 0,
+    // Visible lightweight rows after filter/search + progressive windowing
     filteredLogs: [],
+    hasMore: false,
     // 'all' | 'network' | 'native'
     filterType: "all",
     searchQuery: "",
@@ -139,6 +159,8 @@ Page({
   },
 
   _unsubscribe: null,
+  _visibleCount: PAGE_SIZE,
+  _filteredTotal: 0,
 
   onLoad: function () {
     var self = this;
@@ -164,14 +186,31 @@ Page({
   // Internal: update displayed logs
   // ──────────────────────────────────────────────
   _onLogsUpdate: function (logs) {
+    // When detail view is open, only refresh the selected log if it changed;
+    // defer rebuilding the list until the user navigates back.
+    if (this.data.view === "detail" && this.data.selectedLog) {
+      var selectedId = this.data.selectedLog.id;
+      var updated = logs.find(function (l) {
+        return l.id === selectedId;
+      });
+      if (
+        updated &&
+        (updated.status !== this.data.selectedLog.status ||
+          updated.duration !== this.data.selectedLog.duration)
+      ) {
+        this.setData({ selectedLog: enrichLog(updated) });
+      }
+      return;
+    }
+
     var filterType = this.data.filterType;
-    var searchQuery = (this.data.searchQuery || "").toLowerCase();
+    var searchQuery = (this.data.searchQuery || "").trim().toLowerCase();
 
     var filtered = logs.filter(function (log) {
       if (filterType === "network" && !isNetworkLog(log)) return false;
       if (filterType === "native" && log.type !== "native") return false;
       if (searchQuery) {
-        var inUrl = log.url && log.url.toLowerCase().indexOf(searchQuery) !== -1;
+        var inUrl = log.url && String(log.url).toLowerCase().indexOf(searchQuery) !== -1;
         var inHeaders =
           log.requestHeaders &&
           JSON.stringify(log.requestHeaders).toLowerCase().indexOf(searchQuery) !== -1;
@@ -184,18 +223,34 @@ Page({
     });
 
     var errorCount = logs.filter(function (log) {
-      return log.status === "fail" || (typeof log.status === "number" && log.status >= 400);
+      return (
+        log.status === "fail" ||
+        log.status === "error" ||
+        (typeof log.status === "number" && log.status >= 400)
+      );
     }).length;
 
+    this._filteredTotal = filtered.length;
+    var slice = filtered.slice(0, this._visibleCount);
+
     this.setData({
-      logs: logs.map(enrichLog),
-      filteredLogs: filtered.map(enrichLog),
+      totalCount: logs.length,
+      filteredLogs: slice.map(toListItem),
+      hasMore: filtered.length > slice.length,
       errorCount: errorCount,
     });
   },
 
+  onLoadMore: function () {
+    if (this._visibleCount >= this._filteredTotal) return;
+    this._visibleCount += PAGE_SIZE;
+    var store = getStore();
+    if (store) this._onLogsUpdate(store.getLogs());
+  },
+
   onSetFilter: function (e) {
     var type = e.currentTarget.dataset.type;
+    this._visibleCount = PAGE_SIZE;
     this.setData(
       { filterType: type },
       function () {
@@ -206,6 +261,7 @@ Page({
   },
 
   onSearch: function (e) {
+    this._visibleCount = PAGE_SIZE;
     this.setData(
       { searchQuery: e.detail.value },
       function () {
@@ -216,6 +272,7 @@ Page({
   },
 
   onClearSearch: function () {
+    this._visibleCount = PAGE_SIZE;
     this.setData(
       { searchQuery: "" },
       function () {
@@ -227,7 +284,9 @@ Page({
 
   onTapLog: function (e) {
     var id = e.currentTarget.dataset.id;
-    var log = this.data.logs.find(function (l) {
+    var store = getStore();
+    if (!store) return;
+    var log = store.getLogs().find(function (l) {
       return l.id === id;
     });
     if (!log) return;
@@ -239,7 +298,13 @@ Page({
   },
 
   onBack: function () {
-    this.setData({ view: "list", selectedLog: null });
+    this.setData(
+      { view: "list", selectedLog: null },
+      function () {
+        var store = getStore();
+        if (store) this._onLogsUpdate(store.getLogs());
+      }.bind(this),
+    );
   },
 
   onSetDetailTab: function (e) {
