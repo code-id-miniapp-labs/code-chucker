@@ -1,0 +1,65 @@
+{
+  "name": "@code-id-labs/code-chucker",
+  "version": "1.0.0",
+  "description": "Vite / weapp-vite build plugin for miniapp-chucker — injects the Chucker network & native inspector into weapp-vite Mini Program projects",
+  "keywords": [
+    "chucker",
+    "debug",
+    "miniapp",
+    "miniprogram",
+    "network",
+    "plugin",
+    "vite",
+    "weapp",
+    "weapp-vite"
+  ],
+  "license": "ISC",
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/code-id-miniapp-labs/tarojs-plugin-chucker.git",
+    "directory": "packages/plugin-vite"
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "import": "./dist/runtime.mjs",
+      "require": "./dist/runtime.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "postbuild": "node ../../scripts/copy.js ../miniapp-plugin-chucker/src/components/chucker-float dist/components/chucker-float ../miniapp-plugin-chucker/src/pages/chucker dist/pages/chucker && node ../../scripts/minify.js dist && node -e \"const fs=require('fs');fs.writeFileSync('dist/index.mjs','import m from \\'./index.js\\';export const chuckerPlugin=m.chuckerPlugin;export default m.default;\\n');fs.writeFileSync('dist/runtime.mjs','import m from \\'./runtime.js\\';export const {initChucker,chuckerStore,generateCurl,formatJson,buildExportText}=m;export default m;\\n');\"",
+    "watch": "tsc -w",
+    "prepare": "pnpm run build"
+  },
+  "dependencies": {
+    "miniapp-chucker": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "vite": ">=4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  }
+}

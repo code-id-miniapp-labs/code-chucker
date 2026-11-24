@@ -1,0 +1,20 @@
+<view class="min-h-screen bg-muted p-4 flex flex-col justify-center">
+  <c-card
+    title="Welcome to Code UI"
+    description="Headless + Tailwind-styled WeChat MiniProgram components."
+  >
+    <view class="flex items-center justify-between py-2">
+      <text class="text-sm text-default">Interactive counter</text>
+      <c-badge label="Count: {{count}}" color="primary" variant="soft" />
+    </view>
+
+    <view slot="footer" class="flex justify-end gap-2">
+      <c-button
+        label="Increment"
+        color="primary"
+        leading-icon="i-lucide-plus"
+        bind:tap="handleIncrement"
+      />
+    </view>
+  </c-card>
+</view>

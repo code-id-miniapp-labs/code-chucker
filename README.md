@@ -13,6 +13,7 @@ Inspired by Android Chucker and Chrome DevTools, it captures network requests, u
 | [`miniapp-chucker`](./packages/chucker) | [![npm](https://img.shields.io/npm/v/miniapp-chucker.svg)](https://www.npmjs.com/package/miniapp-chucker) | Core headless runtime: network interceptors & reactive state store |
 | [`miniapp-plugin-chucker`](./packages/miniapp-plugin-chucker) | [![npm](https://img.shields.io/npm/v/miniapp-plugin-chucker.svg)](https://www.npmjs.com/package/miniapp-plugin-chucker) | Native Mini Program inspector UI, floating button & automated sync CLI |
 | [`tarojs-plugin-chucker`](./packages/tarojs-plugin-chucker) | [![npm](https://img.shields.io/npm/v/tarojs-plugin-chucker.svg)](https://www.npmjs.com/package/tarojs-plugin-chucker) | TaroJS compile-time build plugin for Taro React/Vue miniapps |
+| [`vite-plugin-chucker`](./packages/plugin-vite) | [![npm](https://img.shields.io/npm/v/vite-plugin-chucker.svg)](https://www.npmjs.com/package/vite-plugin-chucker) | Vite / `weapp-vite` build plugin for Mini Program projects |
 
 ---
 
@@ -206,6 +207,7 @@ tarojs-plugin-chucker/
 ├── packages/
 │   ├── chucker/                  # miniapp-chucker (core runtime & store)
 │   ├── miniapp-plugin-chucker/   # miniapp-plugin-chucker (native inspector UI & CLI)
+│   ├── plugin-vite/              # vite-plugin-chucker (Vite / weapp-vite build plugin)
 │   └── tarojs-plugin-chucker/    # tarojs-plugin-chucker (Taro build plugin)
 └── example/
     ├── native-plugin-chucker/    # Pure Native WeApp / TCMPP example
