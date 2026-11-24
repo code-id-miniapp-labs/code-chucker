@@ -1,6 +1,6 @@
 {
   "name": "@code-id-labs/miniapp-chucker",
-  "version": "2.2.4",
+  "version": "2.2.5",
   "description": "Headless framework-agnostic network debugger core for WeApp / TCMPP / Alipay / TaroJS miniapps",
   "keywords": [
     "chucker",
