@@ -9,10 +9,10 @@ export interface ChuckerVitePluginOptions {
   enabled?: boolean;
   /**
    * Register the inspector page as an independent sub-package instead of a
-   * main-package page, so its UI code does not count toward the main package size.
-   * - `true` (default): sub-package root "chucker"  → route "/chucker/index"
+   * main-package page under `pages/chucker/index`.
+   * - `false` (default): main-package page          → route "/pages/chucker/index"
+   * - `true`: sub-package root "chucker"            → route "/chucker/index"
    * - `string`: custom sub-package root             → route "/<root>/index"
-   * - `false`: legacy behaviour, main-package page  → route "/pages/chucker/index"
    */
   subPackage?: boolean | string;
   /**
@@ -93,7 +93,7 @@ const PAGE_EXTENSIONS = [".js", ".json", ".wxml", ".wxss"];
 const TEMPLATE_EXT_RE = /\.(wxml|axml|ttml|swan|qml)$/;
 
 function resolveLayout(options: ChuckerVitePluginOptions): LayoutInfo {
-  const sp = options.subPackage === undefined ? true : options.subPackage;
+  const sp = options.subPackage === undefined ? false : options.subPackage;
   if (sp === false) {
     return { isSub: false, root: "", pagePath: "pages/chucker/index" };
   }

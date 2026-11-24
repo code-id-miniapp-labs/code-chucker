@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => ({
       subPackage: true,
       console: false,
       maxLogs: 150,
+      enabled: true,
     }),
   ],
   build: {

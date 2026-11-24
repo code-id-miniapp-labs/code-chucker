@@ -24,10 +24,10 @@ export default defineConfig({
     chuckerPlugin({
       // Enabled automatically in development mode; set true/false to override
       // enabled: true,
-      // Sub-package mode is enabled by default (route "/chucker/index")
-      // subPackage: true,
+      // Defaults to main-package page under pages/chucker/index
+      // subPackage: false,           // default → "/pages/chucker/index"
+      // subPackage: true,            // sub-package → "/chucker/index"
       // subPackage: "debug/chucker", // custom sub-package root
-      // subPackage: false,           // legacy main-package route "/pages/chucker/index"
       // maxLogs: 100,
       // console: false,
     }),

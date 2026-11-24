@@ -68,11 +68,11 @@ function runGenerateBundle(plugin, bundle) {
   return emitted;
 }
 
-test("default sub-package mode registers subPackage, emits assets, and injects into pages", () => {
+test("default mode registers pages/chucker/index, emits assets, and injects into pages", () => {
   const plugin = chuckerPlugin();
   const cfgResult = plugin.config({}, { mode: "development", command: "build" });
   assert.equal(cfgResult.define["process.env.CHUCKER_ENABLED"], "true");
-  assert.equal(cfgResult.define["process.env.CHUCKER_ROUTE"], '"/chucker/index"');
+  assert.equal(cfgResult.define["process.env.CHUCKER_ROUTE"], '"/pages/chucker/index"');
 
   const projectRoot = "/mock/weapp-project";
   plugin.configResolved({
@@ -86,13 +86,13 @@ test("default sub-package mode registers subPackage, emits assets, and injects i
   const transformed = plugin.transform("App({});", appId);
   assert.ok(transformed);
   assert.match(transformed.code, /import \{ initChucker \} from "@code-id-labs\/miniapp-chucker";/);
-  assert.match(transformed.code, /"navigatePath":"\/chucker\/index"/);
+  assert.match(transformed.code, /"navigatePath":"\/pages\/chucker\/index"/);
 
   // Transform skips non-entry files and avoids double injection
   assert.equal(plugin.transform("Page({});", path.resolve(projectRoot, "src/pages/index/index.ts")), null);
   assert.equal(plugin.transform("initChucker(); App({});", appId), null);
 
-  // generateBundle emits float component + sub-package page and patches bundle
+  // generateBundle emits float component + pages/chucker/index and patches bundle
   const bundle = createMockBundle();
   const emitted = runGenerateBundle(plugin, bundle);
 
@@ -100,27 +100,35 @@ test("default sub-package mode registers subPackage, emits assets, and injects i
     assert.ok(emitted[`components/chucker-float/${file}`], `missing component ${file}`);
   }
   for (const ext of [".js", ".json", ".wxml", ".wxss"]) {
-    assert.ok(emitted[`chucker/index${ext}`], `missing inspector page chucker/index${ext}`);
+    assert.ok(emitted[`pages/chucker/index${ext}`], `missing inspector page pages/chucker/index${ext}`);
   }
 
   const appJson = JSON.parse(bundle["app.json"].source);
-  assert.ok(
-    appJson.subPackages.some((pkg) => pkg.root === "chucker" && pkg.pages.includes("index")),
-    "app.json should register chucker sub-package",
-  );
+  assert.ok(appJson.pages.includes("pages/chucker/index"), "app.json should register pages/chucker/index");
   assert.equal(appJson.usingComponents["chucker-float"], "/components/chucker-float/index");
 
   const indexJson = JSON.parse(bundle["pages/index/index.json"].source);
   assert.equal(indexJson.usingComponents["chucker-float"], "/components/chucker-float/index");
 
-  assert.match(bundle["pages/index/index.wxml"].source, /<chucker-float url="\/chucker\/index" \/>/);
-  assert.match(bundle["pages/profile/index.wxml"].source, /<chucker-float url="\/chucker\/index" \/>/);
-  assert.match(bundle["pkgA/detail/index.wxml"].source, /<chucker-float url="\/chucker\/index" \/>/);
+  assert.match(bundle["pages/index/index.wxml"].source, /<chucker-float url="\/pages\/chucker\/index" \/>/);
+  assert.match(bundle["pages/profile/index.wxml"].source, /<chucker-float url="\/pages\/chucker\/index" \/>/);
+  assert.match(bundle["pkgA/detail/index.wxml"].source, /<chucker-float url="\/pages\/chucker\/index" \/>/);
   // Regular components should NOT get <chucker-float /> injected
   assert.doesNotMatch(bundle["components/button/index.wxml"].source, /chucker-float/);
 });
 
-test("custom subPackage root and main-package mode", () => {
+test("subPackage: true and custom subPackage root", () => {
+  // Default sub-package mode
+  const subPlugin = chuckerPlugin({ enabled: true, subPackage: true });
+  subPlugin.configResolved({ root: "/mock/app", mode: "production" });
+  const subBundle = createMockBundle();
+  const subEmitted = runGenerateBundle(subPlugin, subBundle);
+
+  assert.ok(subEmitted["chucker/index.wxml"]);
+  const subAppJson = JSON.parse(subBundle["app.json"].source);
+  assert.ok(subAppJson.subPackages.some((p) => p.root === "chucker" && p.pages.includes("index")));
+  assert.match(subBundle["pages/index/index.wxml"].source, /url="\/chucker\/index"/);
+
   // Custom sub-package root
   const customPlugin = chuckerPlugin({ enabled: true, subPackage: "/debug/chucker/" });
   customPlugin.configResolved({ root: "/mock/app", mode: "production" });
@@ -131,17 +139,6 @@ test("custom subPackage root and main-package mode", () => {
   const customAppJson = JSON.parse(customBundle["app.json"].source);
   assert.ok(customAppJson.subPackages.some((p) => p.root === "debug/chucker"));
   assert.match(customBundle["pages/index/index.wxml"].source, /url="\/debug\/chucker\/index"/);
-
-  // Legacy main-package mode
-  const mainPlugin = chuckerPlugin({ enabled: true, subPackage: false });
-  mainPlugin.configResolved({ root: "/mock/app", mode: "production" });
-  const mainBundle = createMockBundle();
-  const mainEmitted = runGenerateBundle(mainPlugin, mainBundle);
-
-  assert.ok(mainEmitted["pages/chucker/index.wxml"]);
-  const mainAppJson = JSON.parse(mainBundle["app.json"].source);
-  assert.ok(mainAppJson.pages.includes("pages/chucker/index"));
-  assert.match(mainBundle["pages/index/index.wxml"].source, /url="\/pages\/chucker\/index"/);
 });
 
 test("disabled mode in production is a complete no-op", () => {

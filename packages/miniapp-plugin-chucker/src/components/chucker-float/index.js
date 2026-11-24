@@ -24,8 +24,12 @@ Component({
       if (api && typeof api.navigateTo === "function") {
         api.navigateTo({
           url: url,
-          fail: function () {
-            // Legacy main-package layouts
+          fail: function (err) {
+            if (customUrl) {
+              console.warn("[miniapp-chucker] Failed to navigate to " + url + ":", err);
+              return;
+            }
+            // Legacy main-package layouts when no explicit url prop is set
             api.navigateTo({
               url: "/miniprogram_npm/miniapp-plugin-chucker/pages/chucker/index",
               fail: function () {
